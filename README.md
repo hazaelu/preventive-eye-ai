@@ -51,7 +51,7 @@ Para clonar e inicializar este entorno de Inteligencia Artificial de forma segur
 
 ```bash
 # 1. Clonar este laboratorio independiente
-git clone https://github.com
+git clone https://github.com/hazaelu
 cd preventive-eye-ai
 
 # 2. Inicializar y activar el entorno virtual aislado (Linux/macOS)
