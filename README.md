@@ -2,7 +2,7 @@
 
 Este repositorio contiene la arquitectura lógica y los algoritmos base para un sistema de visión artificial enfocado en la salud laboral digital, diseñado para monitorizar la fatiga visual humana en tiempo real.
 
-🔗 **Conectado a mi ecosistema principal:** [hazaelu.github.io](https://github.io)
+🔗 **Conectado a mi ecosistema principal:** [hazaelu.github.io](https://hazaelu.github.io/)
 
 ---
 
