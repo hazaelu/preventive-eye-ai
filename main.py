@@ -1,62 +1,106 @@
 import cv2
+import mediapipe as mp
 import numpy as np
 
-def lanzar_laboratorio_ia():
-    print("🤖 [IA Ocular] Inicializando modelos lógicos de visión artificial...")
+def calcular_ear(puntos_ojo):
+    # Convertimos los puntos de landmarks a arreglos numéricos de NumPy
+    p1, p2, p3, p4, p5, p6 = [np.array([p.x, p.y]) for p in puntos_ojo]
     
-    # 1. Cargamos las redes de clasificadores pre-entrenados Haar Cascades desde el núcleo de OpenCV
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-    eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+    # Calculamos las distancias verticales entre los párpados
+    dist_vertical_1 = np.linalg.norm(p2 - p6)
+    dist_vertical_2 = np.linalg.norm(p3 - p5)
     
-    # 2. Inicializamos el flujo de captura de video (0 = cámara local por defecto)
+    # Calculamos la distancia horizontal entre las esquinas del ojo
+    dist_horizontal = np.linalg.norm(p1 - p4)
+    
+    # Fórmula matemática oficial del Eye Aspect Ratio (EAR)
+    ear = (dist_vertical_1 + dist_vertical_2) / (2.0 * dist_horizontal)
+    return ear
+
+def lanzar_laboratorio_ia_ear():
+    print("🤖 [IA Ocular Advanced] Inicializando modelos biométricos de Google MediaPipe...")
+    
+    # 1. Inicializamos las soluciones de malla facial de MediaPipe
+    mp_face_mesh = mp.solutions.face_mesh
+    face_mesh = mp_face_mesh.FaceMesh(
+        max_num_faces=1,
+        refine_landmarks=True, # 🟢 OBLIGATORIO: Habilita los puntos ultra detallados de las pupilas y párpados
+        min_detection_confidence=0.5,
+        min_tracking_confidence=0.5
+    )
+    
+    # Índices específicos de los 6 landmarks para el Ojo Izquierdo en la malla de MediaPipe
+    LOGICA_OJO_IZQ = [362, 385, 387, 263, 373, 380]
+    
+    # Límites lógicos del negocio bancario preventivo
+    UMBRAL_EAR = 0.22  # Si el EAR baja de este número, el ojo se considera cerrado
+    CONSECUTIVE_FRAMES = 15  # Cantidad de cuadros (aprox 1.5 segs) para considerar fatiga crítica
+    
+    contador_cuadros_fatiga = 0
     cap = cv2.VideoCapture(0)
     
     if not cap.isOpened():
-        print("❌ Error: La infraestructura no detecta un flujo de video o cámara web activa.")
+        print("❌ Error: No se detecta flujo de hardware de video.")
         return
 
-    print("🟢 Algoritmo en línea. Escaneando patrones faciales. Presione 'q' para apagar de forma segura.")
+    print("🟢 Algoritmo EAR en línea. Analizando parpadeo y fatiga. Presione 'q' para salir.")
 
     while True:
-        # Capturamos el fotograma cuadro por cuadro
         ret, frame = cap.read()
         if not ret:
             break
             
-        # Optimización Matemática: La visión artificial procesa matrices en escala de grises para máxima velocidad
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # Invertimos el frame horizontalmente para un efecto espejo natural en UX
+        frame = cv2.flip(frame, 1)
+        alto, ancho, _ = frame.shape
         
-        # 3. El modelo matemático escanea la matriz en busca de coordenadas faciales
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5, minSize=(30, 30))
+        # MediaPipe exige procesar en el espacio de color RGB
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        resultados = face_mesh.process(rgb_frame)
         
-        for (x, y, w, h) in faces:
-            # Dibujamos un contenedor verde en el rostro (Grosor: 2px)
-            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            
-            # Segmentamos la Región de Interés (ROI) para economizar ciclos de procesamiento de CPU
-            roi_gray = gray[y:y+h, x:x+w]
-            roi_color = frame[y:y+h, x:x+w]
-            
-            # 4. Buscamos los patrones oculares exclusivamente dentro del rostro detectado
-            eyes = eye_cascade.detectMultiScale(roi_gray, scaleFactor=1.1, minNeighbors=10, minSize=(15, 15))
-            
-            for (ex, ey, ew, eh) in eyes:
-                # Dibujamos un contenedor dorado corporativo sobre las pupilas/mirada detectada
-                cv2.rectangle(roi_color, (ex, ey), (ex+ew, ey+eh), (0, 204, 255), 2)
+        estado_alerta = "NORMAL"
+        color_interfaz = (0, 255, 0) # Verde inicial
+        
+        if resultados.multi_face_landmarks:
+            for face_landmarks in resultados.multi_face_landmarks:
+                # Extraemos los puntos geométricos del ojo izquierdo
+                puntos_ojo = [face_landmarks.landmark[i] for i in LOGICA_OJO_IZQ]
                 
-                # 💡 LÓGICA PREVENTIVA FUTURA: Aquí evaluaremos el ratio de parpadeo (EAR) para modular el monitor
+                # Calculamos el ratio de apertura ocular en tiempo real
+                ear_actual = calcular_ear(puntos_ojo)
                 
-        # Proyectamos la ventana gráfica interactiva del laboratorio en tiempo real
-        cv2.imshow('AI Eye Tracking Laboratory - Preventative Health Project', frame)
+                # Dibujamos círculos dorados de auditoría sobre los párpados detectados
+                for p in puntos_ojo:
+                    cx, cy = int(p.x * ancho), int(p.y * alto)
+                    cv2.circle(frame, (cx, cy), 2, (0, 204, 255), -1)
+                
+                # 2. EVALUACIÓN LOGICA AUTOMATIZADA
+                if ear_actual < UMBRAL_EAR:
+                    contador_cuadros_fatiga += 1
+                else:
+                    contador_cuadros_fatiga = 0
+                
+                # Si los ojos permanecen cerrados por más del límite de cuadros tolerado
+                if contador_cuadros_fatiga >= CONSECUTIVE_FRAMES:
+                    estado_alerta = "ALERTA: FATIGA DETECTADA CRITICA"
+                    color_interfaz = (0, 0, 255) # Cambio instantáneo a Rojo de peligro
+                    # 💡 AQUÍ SE INYECTARÁ EL LLAMADO DE API PARA MODIFICAR LA PANTALLA
+                
+                # Pintamos las métricas en la pantalla del laboratorio para control del usuario
+                cv2.putText(frame, f"EAR: {ear_actual:.2f}", (30, 50), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, color_interfaz, 2)
+                cv2.putText(frame, f"ESTADO: {estado_alerta}", (30, 90), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, color_interfaz, 2)
+
+        cv2.imshow('Commonwealth Bank Simulation - Advanced AI Ocular Lab', frame)
         
-        # Escuchamos el teclado de forma asíncrona; si se presiona 'q', rompemos el bucle
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-    # Liberamos el hardware y cerramos los hilos gráficos de forma limpia
     cap.release()
     cv2.destroyAllWindows()
-    print("🤖 Laboratorio de Inteligencia Artificial cerrado correctamente.")
+    face_mesh.close()
+    print("🤖 Laboratorio de IA cerrado de forma segura.")
 
 if __name__ == "__main__":
-    lanzar_laboratorio_ia()
+    lanzar_laboratorio_ia_ear()
